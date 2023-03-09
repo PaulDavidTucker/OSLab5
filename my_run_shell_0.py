@@ -19,6 +19,8 @@ see https://peps.python.org/pep-0008 and https://peps.python.org/pep-0257/
 from datetime import datetime
 import os, shutil, sys
 
+from colorama import Fore
+
 # Here the path is hardcoded, but you can easily optionally get your PATH environ variable
 # by using: path = os.environ['PATH'] and then splitting based on ':' such as the_path = path.split(':')
 THE_PATH = ["/bin/", "/usr/bin/", "/usr/local/bin/", "./"]
@@ -51,7 +53,14 @@ def runCmd(fields):
 # execv executes a new program, replacing the current process; on success, it does not return.
 # On Linux systems, the new executable is loaded into the current process, and will have the same process id as the caller.
     try:
-        os.execv(execname, fields)
+        #creates child, if in child then os.execv, else wait for child
+        pid = os.fork()
+
+        if pid == 0:
+            os.execv(execname, fields)
+        else:
+            os.wait()
+        
     except :
         print("Something went wrong there")
         os._exit(0)
@@ -84,9 +93,20 @@ def add_path(cmd, executable_dirs):
 #   No arguments
 # ========================
 def filesCmd(fields):
-    """Not yet implemented"""
+    """Return nothing after printing names/types of files/dirs in working directory.
     
-    print("Nothing here yet. Use your files command from part A")
+    Input: takes a list of text fields
+    Action: prints for each file/dir in current working directory their type and name
+            (unless list is non-empty in which case an error message is printed)
+    Output: returns no return value
+    """
+    
+    if checkArgs(fields, 0):
+        for filename in os.listdir('.'):
+            if os.path.isdir(os.path.abspath(filename)):
+                print("dir:", filename)
+            else:
+                print("file:", filename)
 
 # ========================
 #  info command
@@ -94,9 +114,176 @@ def filesCmd(fields):
 #   1 argument: file name
 # ========================
 def infoCmd(fields):
-    """Not yet implemented."""
+    """Return nothing after printing basic file information about target file.
     
-    print("Nothing here yet. Use your info command from part A")
+    Input: takes a list of text fields
+    Action: prints our the name, owner, file/dir status, size (bytes), date of last access, date of last permissions mod, date of last
+    modification and if the program can be executed or not.  
+    Output: returns no return value
+    """
+
+
+    if checkArgs(fields, 1):
+            #Assign inputted param to var
+            filename = fields[1]
+            try:
+                #Have an OS.stat object
+                Result = os.stat(filename)
+                #Pull and print info
+                print(Fore.BLUE + 'Name: ' + Fore.WHITE +filename)
+                print(Fore.BLUE + "Owner: " +Fore.WHITE + pwd.getpwuid(Result.st_uid).pw_name)
+                
+                #determine dir or file type.
+                if (os.path.isdir(filename)):
+                    print(Fore.BLUE + "Type: " +Fore.WHITE +"Dir")
+                else:
+                    #Print extra info
+                    print(Fore.BLUE + "Type: " +Fore.WHITE +"File")
+                    print(Fore.BLUE + 'Size (Bytes): ' + Fore.WHITE + str(Result.st_size))
+                    print(Fore.BLUE + 'Date of last access: ' +Fore.WHITE + datetime.fromtimestamp(os.path.getatime(filename)).strftime('%b %d %Y %H:%M:%S'))
+                    print(Fore.BLUE + 'Date of last access permissions modification: ' +Fore.WHITE + datetime.fromtimestamp(os.path.getctime(filename)).strftime('%b %d %Y %H:%M:%S'))
+                
+                print(Fore.BLUE + 'Date of last modification: ' +Fore.WHITE + datetime.fromtimestamp(os.path.getmtime(filename)).strftime('%b %d %Y %H:%M:%S'))
+                print(Fore.BLUE + "Executable? : " +Fore.WHITE + str(os.access(os.path.abspath(filename), os.X_OK)))
+            #Error handling
+            except:
+                print(Fore.RED + "ERROR  - No file named: "+filename + Fore.WHITE)
+            
+
+# ====================================================
+#  Delete command, allows removal of file from system
+#       Deletes target file, provided it exists.
+#       1 Command argument: file name
+#=====================================================
+
+def deleteCmd(fields):
+
+    """Return nothing after pdeleting the target file. If filename cannot be found, throw error
+    
+    Input: takes a list of text fields
+    Action: deletes the targeted file and prints a success message.
+    Output: returns no return value
+    """
+
+
+    if checkArgs(fields, 1):
+        filename = fields[1]
+        if os.path.exists(filename):
+            os.remove(filename)
+            print(Fore.BLUE + "File Removed." + Fore.WHITE)
+        else:
+            print(Fore.RED + "ERROR - File not found. Perhaps check your working directory?" + Fore.WHITE)
+
+
+# ====================================================
+#  Copy command, allows duplication of a selected file to a targeted name
+#       Duplucates soruce file, provided name of dest file does not exist
+#       2 Command arguments:  src file name, dest file name
+#=====================================================
+
+def copyCmd(fields):
+
+    """Return nothing after duplicating the target file. If src filename cannot be found, throw error. if DEST already exists, throw error
+    
+    Input: takes a list of text fields
+    Action: duplicates a target into filename of DEST
+    Output: returns no return value
+    """
+
+    if checkArgs(fields, 2):
+        fromFile = fields[1]
+        toFile = fields[2]
+        if os.path.exists(fromFile) and not os.path.exists(toFile):
+            shutil.copyfile(fromFile, toFile)
+            print(Fore.BLUE + "File Copied successfully. " + Fore.WHITE)
+        else:
+            print(Fore.RED + "Error - Source file either does not exist or destination file already exists." + Fore.WHITE)
+
+
+
+# ====================================================
+#  Where command,  prints name of current working directory
+#       
+#       0 Command arguments.
+#=====================================================
+
+def whereCmd(feilds):
+
+    """Return nothing after printing the name of the current working dir as a string to console
+    
+    Input: takes a list of text fields
+    Action: Prints current working dir to console
+    Output: returns no return value
+    """
+
+
+    if checkArgs(feilds, 0):
+        print(os.getcwd())
+
+
+def downCmd(fields):
+
+    """Return nothing after mocing into target sub diretory
+    
+    Input: takes a list of text fields
+    Action: Move into target sub directory 
+    Output: returns no return value
+    """
+
+    if checkArgs(fields, 1):
+        if os.path.exists(fields[1]):
+            try:
+                currentDir = os.getcwd()
+                os.chdir(currentDir +"/" +fields[1])
+            except:
+                print(Fore.RED + "ERROR" + Fore.WHITE)
+
+        else:
+            print(Fore.RED + "ERROR - Directory not found" + Fore.WHITE)
+
+# ====================================================
+#  Up command, moves up the working dir tree
+#       0 commands
+#=====================================================
+
+def upCmd(fields):
+
+    """Return nothing after moving up the working tree
+    
+    Input: takes a list of text fields
+    Action: move up tree
+    Output: returns no return value
+    """
+
+    if checkArgs(fields, 0):
+        try:
+            if not os.getcwd() == "/":
+                os.chdir("..")
+            else:
+                print(Fore.RED + "ERROR -AT HOME DIRECTORY, CANNOT STEP BACK" + Fore.WHITE)
+        except:
+            print(Fore.RED + "ERROR - CANNOT STEP BACK" + Fore.WHITE)
+
+
+# ====================================================
+#  Exit command, Quit the shell
+#       0 commands
+#=====================================================
+
+def exitCmd(fields):
+
+    """Return nothing after exiting the shell
+
+    Input: takes a list of text fields
+    Action: Exit the shell
+    Output: returns no return value
+    """
+
+    if checkArgs(fields, 0):
+        print(Fore.GREEN + "Goodbye..")
+        sys.exit()
+
+
 
 # ----------------------
 # Other functions
@@ -137,6 +324,18 @@ def main():
             filesCmd(fields)
         elif fields[0] == "info":
             infoCmd(fields)
+        elif fields[0] == "delete":
+            deleteCmd(fields)
+        elif fields[0] == "copy":
+            copyCmd(fields)
+        elif fields[0] == "where":
+            whereCmd(fields)
+        elif fields[0] == "down":
+            downCmd(fields)
+        elif fields[0] == "up":
+            upCmd(fields)
+        elif fields[0] == "exit":
+            exitCmd(fields)
         else:
             runCmd(fields)
     
