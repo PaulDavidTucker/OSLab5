@@ -58,6 +58,7 @@ def runCmd(fields):
 
         if pid == 0:
             os.execv(execname, fields)
+            os.exit(0)
         else:
             os.wait()
         

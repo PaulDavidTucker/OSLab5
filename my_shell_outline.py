@@ -105,8 +105,12 @@ def delete_cmd(fields):
     if checkArgs(fields, 1):
         filename = fields[1]
         if os.path.exists(filename):
-            os.remove(filename)
-            print(Fore.BLUE + "File Removed." + Fore.WHITE)
+            if os.path.isfile(filename):
+                os.remove(filename)
+                print(Fore.BLUE + "File Removed." + Fore.WHITE)
+            else:
+                print(Fore.RED + "ERROR - Target is not a file, is Dir" + Fore.WHITE)
+            
         else:
             print(Fore.RED + "ERROR - File not found. Perhaps check your working directory?" + Fore.WHITE)
 
@@ -160,7 +164,7 @@ def where_cmd(feilds):
 
 def down_cmd(fields):
 
-    """Return nothing after mocing into target sub diretory
+    """Return nothing after moving into target sub diretory
     
     Input: takes a list of text fields
     Action: Move into target sub directory 
